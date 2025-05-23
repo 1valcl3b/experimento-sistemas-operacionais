@@ -1,20 +1,30 @@
 import socket
+import threading
 
-host = '0.0.0.0'  # Aceita conexões de qualquer IP
-porta = 5000      # Porta para escutar
+host = '0.0.0.0'
+porta = 5059
 
-# Cria o socket TCP
-soquete_servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-soquete_servidor.bind((host, porta))
-soquete_servidor.listen()
+def cliente(conexao, endereco):
+    print(f"[+] Conexão de {endereco}")
+    try:
+        dados = conexao.recv(1024).decode()
+        print(f"[{endereco}] Mensagem: {dados}")
+        conexao.sendall("Mensagem recebida!".encode())
+    except Exception as erro:
+        print(f"[!] Erro com {endereco}: {erro}")
+    finally:
+        conexao.close()
 
-print(f"Servidor escutando na porta {porta}...")
+def iniciar_servidor():
+    servidor = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    servidor.bind((host, porta))
+    servidor.listen()
+    print(f"Servidor escutando na porta {porta}...")
 
-while True:
-    conexao, endereco = soquete_servidor.accept()
-    print(f"Conexão recebida do {endereco}")
-    dados_recebidos = conexao.recv(1024).decode()
-    print(f"Mesagem recebida: {dados_recebidos}")
-    conexao.sendall("Mensagem recebida!".encode())
-    conexao.close()
+    while True:
+        conexao, endereco = servidor.accept()
+        thread = threading.Thread(target=cliente, args=(conexao, endereco))
+        thread.start()
 
+if __name__ == "__main__":
+    iniciar_servidor()
