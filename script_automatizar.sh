@@ -1,46 +1,42 @@
 #!/bin/bash
 
-# Arquivo de saída
-OUTPUT_FILE="resultados_experimento.csv"
+CLIENT_SCRIPTS=("cliente_baixa.py" "cliente_media.py" "cliente_alta.py")
+CARGAS=("baixa" "media" "alta")
 
-# Cabeçalho do arquivo CSV
-echo "Repeticao,CPU_Usage,Trocas_Contexto_Voluntarias,Trocas_Contexto_Involuntarias,Leitura_KBps,Escrita_KBps" > $OUTPUT_FILE
+REPETICOES=10
 
-# Número de repetições do experimento
-NUM_REPETICOES=10
+RESULTADOS_DIR="resultados"
+mkdir -p "$RESULTADOS_DIR"
 
-# Identificar o PID do servidor
-PID=$(pgrep -f servidor.py)
+coletar_metricas() {
+    PID=$(pgrep -f servidor.py)
+    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
-if [ -z "$PID" ]; then
-    echo "Erro: O servidor não está rodando!"
-    exit 1
-fi
+    echo "PID do servidor: $PID"
 
-echo "Iniciando experimento... Coletando métricas para o processo $PID"
+    pidstat -u -p $PID 1 1 > "$RESULTADOS_DIR/cpu_${CARGA}_${i}_${TIMESTAMP}.txt"
 
-for i in $(seq 1 $NUM_REPETICOES); do
-    echo "Rodada $i..."
-
-    # Captura o uso da CPU do servidor (ignora a 1ª linha do pidstat)
-    CPU_USAGE=$(pidstat -p $PID 1 1 | awk 'NR==4 {print $8}') 
-
-    # Captura as trocas de contexto voluntárias e involuntárias
-    VOLUNTARIAS=$(grep voluntary_ctxt_switches /proc/$PID/status | awk '{print $2}')
-    INVOLUNTARIAS=$(grep nonvoluntary_ctxt_switches /proc/$PID/status | awk '{print $2}')
+    cat /proc/$PID/status | grep ctxt > "$RESULTADOS_DIR/context_${CARGA}_${i}_${TIMESTAMP}.txt"
     
-    # Captura estatísticas de I/O (leitura/escrita)
-    IO_STATS=$(iostat -d -k 1 1 | awk '/sda/ {print $3","$4}')
+    iostat -dx 1 1 > "$RESULTADOS_DIR/io_${CARGA}_${i}_${TIMESTAMP}.txt"
+}
 
-    # Verifica se os dados foram capturados corretamente
-    if [ -z "$CPU_USAGE" ] || [ -z "$VOLUNTARIAS" ] || [ -z "$INVOLUNTARIAS" ] || [ -z "$IO_STATS" ]; then
-        echo "Erro ao capturar dados na repetição $i. Pulando..."
-        continue
-    fi
+for idx in "${!CLIENT_SCRIPTS[@]}"; do
+    SCRIPT=${CLIENT_SCRIPTS[$idx]}
+    CARGA=${CARGAS[$idx]}
+    echo -e "\n============== Iniciando testes de CARGA: $CARGA ==============\n"
 
-    # Salva os dados no arquivo CSV
-    echo "$i,$CPU_USAGE,$VOLUNTARIAS,$INVOLUNTARIAS,$IO_STATS" >> $OUTPUT_FILE
-    sleep 5  # Aguarda 5 segundos entre as repetições
+    for ((i=1; i<=REPETICOES; i++)); do
+        echo -e "\n[$CARGA] Execução $i de $REPETICOES\n"
+
+        python3 "$SCRIPT" &
+        sleep 5
+        coletar_metricas 
+        wait
+
+        echo "[OK] Métricas salvas para execução $i ($CARGA)"
+        sleep 3
+    done
 done
 
-echo "Experimento finalizado. Resultados salvos em $OUTPUT_FILE"
+echo -e "\n=== Fim do experimento ===\n"
