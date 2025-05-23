@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CLIENT_SCRIPTS=("cliente_baixa.py" "cliente_media.py" "cliente_alta.py")
+CLIENT_SCRIPTS=("cliente_carga_baixa.py" "cliente_carga_media.py" "cliente_carga_alta.py")
 CARGAS=("baixa" "media" "alta")
 
 REPETICOES=10
