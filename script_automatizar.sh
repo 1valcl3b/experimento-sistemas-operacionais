@@ -20,7 +20,7 @@ for i in $(seq 1 $REPETICOES); do
     sleep 1
 
     # Capatrar recursos da CPU
-    CPU_INFO=$(pidstat -u -p $PID 1 1 | awk '/^[0-9]/ {print $4, $5}')  # usr sys
+    CPU_INFO=$(pidstat -u -p $PID 1 1 | awk '/^[0-9]/ {print $4, $5}') 
     CPU_USR=$(echo "$CPU_INFO" | awk '{print $1}')
     CPU_SYS=$(echo "$CPU_INFO" | awk '{print $2}')
 
