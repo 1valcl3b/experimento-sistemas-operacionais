@@ -4,7 +4,7 @@ import threading
 host = "192.168.100.111"
 porta = 5059
 
-quantidade = 20
+quantidade = 50
 nivel = "alta" #Apenas para visualziar o NIVEL da CARGA
 
 def mandar_mensagem(num):
